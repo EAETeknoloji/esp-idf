@@ -125,6 +125,20 @@ err:
     return ret;
 }
 
+static esp_err_t dp84848_config_link_led(phy_802_3_t *phy)
+{
+    esp_eth_mediator_t *eth = phy->eth;
+    phycr_reg_t reg_value;
+    esp_err_t ret = ESP_OK;
+
+    ESP_GOTO_ON_ERROR(eth->phy_reg_read(eth, phy->addr, ETH_PHY_CR_REG_ADDR, &(reg_value.val)), err, TAG, "read fail ETH_PHY_CR_REG_ADDR");
+    reg_value.val &= ~(1 << 5); // LEDCFG[0] ->  0-> On for good link, off for no link. 1-> On for good link, blink for activity
+    ESP_GOTO_ON_ERROR(eth->phy_reg_write(eth, phy->addr, ETH_PHY_CR_REG_ADDR, reg_value.val), err, TAG, "write fail ETH_PHY_CR_REG_ADDR");
+
+err:
+    return ret;
+}
+
 static esp_err_t dp83848_autonego_ctrl(esp_eth_phy_t *phy, eth_phy_autoneg_cmd_t cmd, bool *autonego_en_stat)
 {
     esp_err_t ret = ESP_OK;
@@ -166,6 +180,7 @@ static esp_err_t dp83848_init(esp_eth_phy_t *phy)
     ESP_GOTO_ON_ERROR(esp_eth_phy_802_3_read_oui(phy_802_3, &oui), err, TAG, "read OUI failed");
     ESP_GOTO_ON_ERROR(esp_eth_phy_802_3_read_manufac_info(phy_802_3, &model, NULL), err, TAG, "read manufacturer's info failed");
     ESP_GOTO_ON_FALSE(oui == 0x80017 && model == 0x09, ESP_FAIL, err, TAG, "wrong chip ID");
+    ESP_GOTO_ON_ERROR(dp84848_config_link_led(phy_802_3), err, TAG, "Link led configuration fail");
 
     return ESP_OK;
 err:
